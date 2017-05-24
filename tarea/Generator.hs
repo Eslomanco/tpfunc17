@@ -17,4 +17,14 @@ import Syntax
 
 
 genProgram :: Program -> String
-genProgram (Program dfs expr)  = undefined -- Implementar
+genProgram (Program dfs expr)  = "#include <stdio.h>\n" ++ (genDfs dfs) ++ "\nint main(){" ++ (genExpr expr) ++ "}" -- Implementar
+
+genDfs :: Defs -> String
+genDfs _ = ""
+
+genExpr :: Expr -> String
+genExpr (Var x) = show x ++ " "
+genExpr (IntLit x) =  show x ++ " "
+genExpr (BoolLit x) = show x ++ " "
+genExpr (Infix op x y) = (genExpr x) ++ " " ++ show op ++ " " ++ (genExpr y)
+ 
