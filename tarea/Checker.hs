@@ -23,6 +23,7 @@ data Error = Duplicated      Name
            | ArgNumDef       Name Int Int
            | ArgNumApp       Name Int Int
            | Expected        Type Type
+           
             
 instance Show Error where
  show (Duplicated      n)  = "Duplicated declaration: " ++ n
@@ -35,4 +36,23 @@ instance Show Error where
 
 
 checkProgram :: Program -> Checked
-checkProgram (Program defs body) = undefined -- Impementar
+checkProgram (Program defs body) = checkDupDecl defs -- Impementar
+
+-- Checkeo de Duplicados
+pertenece :: Eq a => a -> [a] -> Bool
+pertenece x [] = False
+pertenece x (y:ys) | x == y = True
+                   | otherwise = pertenece x ys
+
+listarDuplicados :: [Name] -> [Error]
+listarDuplicados [] = []
+listarDuplicados (x:xs) | pertenece x xs = (Duplicated x) : listarDuplicados xs
+                        | otherwise = listarDuplicados xs
+
+listFuncName :: Defs -> [Name]
+listFuncName x = [y | (FunDef (y,_) _ _) <- x]
+
+checkDupDecl x | not $ null $ listarDuplicados $ listFuncName x = Wrong (listarDuplicados $ listFuncName x)
+               | otherwise = Ok
+
+
