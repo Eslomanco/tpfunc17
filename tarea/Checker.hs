@@ -36,7 +36,7 @@ instance Show Error where
 
 
 checkProgram :: Program -> Checked
-checkProgram (Program defs body) = checkDupDecl defs -- Impementar
+checkProgram (Program defs body) = checkParamNums defs -- Impementar
 
 -- Checkeo de Duplicados
 pertenece :: Eq a => a -> [a] -> Bool
@@ -52,7 +52,38 @@ listarDuplicados (x:xs) | pertenece x xs = (Duplicated x) : listarDuplicados xs
 listFuncName :: Defs -> [Name]
 listFuncName x = [y | (FunDef (y,_) _ _) <- x]
 
-checkDupDecl x | not $ null $ listarDuplicados $ listFuncName x = Wrong (listarDuplicados $ listFuncName x)
-               | otherwise = Ok
+listVarsName :: Defs -> [[Name]]
+listVarsName x = [y | (FunDef _ y _) <- x]
 
+checkDupFunc :: Defs -> [Error]
+checkDupFunc x = listarDuplicados $ listFuncName x
+
+checkDupVars :: Defs -> [Error]
+checkDupVars x = concat $ map (listarDuplicados) (listVarsName x)
+
+checkDupDecl x | not $ null y = Wrong (y)
+               | otherwise = Ok
+                where 
+                    y = (checkDupFunc x) ++ (checkDupVars x)
+
+-- Número de parámetros
+
+contarParamSig :: Sig -> Int
+contarParamSig (Sig x _) = length x
+
+contarParamEq ::  [Name] -> Int
+contarParamEq y = length y
+
+cmpParamNum :: FunDef -> [Error]
+cmpParamNum (FunDef (name,sig) eqVars _)   | numSig == numEqVars = []
+                                           | otherwise = [ArgNumDef name numSig numEqVars]
+                                                where
+                                                    numSig = contarParamSig sig
+                                                    numEqVars = contarParamEq eqVars
+                                                
+checkParamNums :: Defs -> Checked
+checkParamNums x | not $ null y = Wrong y
+                 | otherwise = Ok
+                 where 
+                    y = concat $ map (cmpParamNum) x 
 
