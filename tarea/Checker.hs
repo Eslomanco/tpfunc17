@@ -87,3 +87,13 @@ checkParamNums x | not $ null y = Wrong y
                  where 
                     y = concat $ map (cmpParamNum) x 
 
+-- Nombres no declarados
+
+checkUndefinedVarExpr :: [Name] -> Expr -> [Error]
+checkUndefinedVarExpr _ (IntLit _) = []
+checkUndefinedVarExpr _ (BoolLit _) = []
+checkUndefinedVarExpr xs (Var x) | pertenece x xs = [Undefined x]
+                                 | otherwise = []
+checkUndefinedVarExpr xs (Infix der izq) = (checkUndefinedVarExpr xs der) ++ (checkUndefinedVarExpr xs izq)
+checkUndefinedVarExpr xs (If x y z) = (checkUndefinedVarExpr xs x) ++ (checkUndefinedVarExpr xs y) ++ (checkUndefinedVarExpr xs z)
+checkUndefinedVarExpr xs (Let)
