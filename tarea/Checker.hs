@@ -112,9 +112,27 @@ checkProgramUndefined (Program defs expr)   | null $ auxLista = Ok
                                                 auxLista = (checkAllDefsUndefined y defs) ++ (checkUndefinedVarExpr y expr)
                                                 y = listFuncName defs
                                             
+-- Checkeo de tipos
 
+getFuncType :: FunDef -> TypedFun
+getFuncType (FunDef x _ _) = x
 
+getFuncTypeList :: TypedFun -> [Type]
+getFuncTypeList (_,(Sig xs _)) = xs
 
+getFuncTypeName :: TypedFun -> Name
+getFuncTypeName (x, _) = x
+
+getVarName :: TypedVar -> Name
+getVarName (x, _) = x
+
+updateVarType :: [TypedVar] -> TypedVar -> [TypedVar]
+updateVarType [] x = [x]
+updateVarType (y:ys) x | getVarName $ x == getVarName $ y = (x:ys)
+                       | otherwise = (y:(updateVarType ys x))
+
+checkExprType :: [TypedFun] -> [TypedVar] -> Expr -> Type
+ 
 
 
 
