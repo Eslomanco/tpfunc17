@@ -66,7 +66,7 @@ checkDupDecl x | not $ null y = Wrong (y)
                 where 
                     y = (checkDupFunc x) ++ (checkDupVars x)
 
--- Número de parámetros
+-- Número de parámetros en Declaración
 
 contarParamSig :: Sig -> Int
 contarParamSig (Sig x _) = length x
@@ -146,6 +146,8 @@ updateVarType [] x = [x]
 updateVarType (y:ys) x | getVarName $ x == getVarName $ y = (x:ys)
                        | otherwise = (y:(updateVarType ys x))
 
+
+                       
 getExprType :: [TypedFun] -> [TypedVar] -> Expr -> Type
 getExprType _ _ (IntLit _) = TyInt
 getExprType _ _ (BoolLit _) = TyBool
@@ -157,6 +159,11 @@ getExprType _ xs (Var x) = getVarTypeFromList xs x
 getExprType fs vs (If _ x _) = getExprType fs vs x
 getExprType fs vs (Let ux _ expr) = getExprType fs (updateVarType vs ux) expr
 
+
+checkExprType :: [TypedFun] -> [TypedVar] -> Expr -> [Error]
+checkExprType _ _ (IntLit _) = []
+checkExprType _ _ (BoolLit _) = []
+checkExprType _ _ (Var _) = []
 
 
 
