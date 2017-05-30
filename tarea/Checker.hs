@@ -114,8 +114,11 @@ checkProgramUndefined (Program defs expr)   | null $ auxLista = Ok
                                             
 -- Checkeo de tipos
 
-getFuncType :: FunDef -> TypedFun
-getFuncType (FunDef x _ _) = x
+getFuncTypedFun :: FunDef -> TypedFun
+getFuncTypedFun (FunDef x _ _) = x
+
+getFuncType :: TypedFun -> Type
+getFuncType (_, (Sig _ x)) = x
 
 getFuncTypeList :: TypedFun -> [Type]
 getFuncTypeList (_,(Sig xs _)) = xs
@@ -126,13 +129,33 @@ getFuncTypeName (x, _) = x
 getVarName :: TypedVar -> Name
 getVarName (x, _) = x
 
+getVarType :: TypedVar -> Type
+getVarType (_, x) = x
+
+getFuncTypeFromList :: [TypedFun] -> Name -> Type
+getFuncTypeFromList (x:xs) y | getFuncTypeName $ x == y = getFuncType x
+                             | otherwise = getFuncTypeFromList xs y
+
+getVarTypeFromList :: [TypedVar] -> Name -> Type
+getVarTypeFromList (x:xs) y | getVarName $ x == y = getVarType x
+                            | otherwise = getVarTypeFromList xs y
+
+                             
 updateVarType :: [TypedVar] -> TypedVar -> [TypedVar]
 updateVarType [] x = [x]
 updateVarType (y:ys) x | getVarName $ x == getVarName $ y = (x:ys)
                        | otherwise = (y:(updateVarType ys x))
 
-checkExprType :: [TypedFun] -> [TypedVar] -> Expr -> Type
- 
+getExprType :: [TypedFun] -> [TypedVar] -> Expr -> Type
+getExprType _ _ (IntLit _) = TyInt
+getExprType _ _ (BoolLit _) = TyBool
+getExprType _ _ (Infix x _ _) = case x of
+                                    Add, Sub, Mult, Div -> TyInt
+                                    Eq, NEq, GTh, LTh, GEq, LEq -> TyBool
+getExprType xs _ (App x _) = getFuncTypeFromList xs x
+getExprType _ xs (Var x) = getVarTypeFromList xs x
+getExprType fs vs (If _ x _) = getExprType fs vs x
+getExprType fs vs (Let ux _ expr) = getExprType fs (updateVarType vs ux) expr
 
 
 
