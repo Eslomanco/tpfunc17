@@ -36,7 +36,7 @@ instance Show Error where
 
 
 checkProgram :: Program -> Checked
-checkProgram (Program defs body) = checkParamNums defs -- Impementar
+checkProgram (Program defs body) = checkProgramUndefined (Program defs body) -- Impementar
 
 -- Checkeo de Duplicados
 pertenece :: Eq a => a -> [a] -> Bool
@@ -92,8 +92,36 @@ checkParamNums x | not $ null y = Wrong y
 checkUndefinedVarExpr :: [Name] -> Expr -> [Error]
 checkUndefinedVarExpr _ (IntLit _) = []
 checkUndefinedVarExpr _ (BoolLit _) = []
-checkUndefinedVarExpr xs (Var x) | pertenece x xs = [Undefined x]
-                                 | otherwise = []
-checkUndefinedVarExpr xs (Infix der izq) = (checkUndefinedVarExpr xs der) ++ (checkUndefinedVarExpr xs izq)
+checkUndefinedVarExpr xs (Var x) | pertenece x xs = []
+                                 | otherwise = [Undefined x]
+checkUndefinedVarExpr xs (Infix _ der izq) = (checkUndefinedVarExpr xs der) ++ (checkUndefinedVarExpr xs izq)
 checkUndefinedVarExpr xs (If x y z) = (checkUndefinedVarExpr xs x) ++ (checkUndefinedVarExpr xs y) ++ (checkUndefinedVarExpr xs z)
-checkUndefinedVarExpr xs (Let)
+checkUndefinedVarExpr xs (Let (name, _) x1 x2) = (checkUndefinedVarExpr xs x1) ++ (checkUndefinedVarExpr (name:xs) x2)
+checkUndefinedVarExpr xs (App name ys) = (if (pertenece name xs) then [] else [Undefined name]) ++ (concat $ map (checkUndefinedVarExpr xs) ys)
+
+checkDefUndefined :: [Name] -> FunDef -> [Error]
+checkDefUndefined xs (FunDef _ ys expr) = checkUndefinedVarExpr (xs ++ ys) expr
+
+checkAllDefsUndefined :: [Name] -> Defs -> [Error]
+checkAllDefsUndefined ns ds = concat $ map (checkDefUndefined ns) ds
+
+checkProgramUndefined :: Program -> Checked
+checkProgramUndefined (Program defs expr)   | null $ auxLista = Ok
+                                            | otherwise = Wrong auxLista
+                                            where
+                                                auxLista = (checkAllDefsUndefined y defs) ++ (checkUndefinedVarExpr y expr)
+                                                y = listFuncName defs
+                                            
+
+
+
+
+
+
+
+
+
+
+
+
+
