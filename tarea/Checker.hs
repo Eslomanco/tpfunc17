@@ -114,56 +114,98 @@ checkProgramUndefined (Program defs expr)   | null $ auxLista = Ok
                                             
 -- Checkeo de tipos
 
-getFuncTypedFun :: FunDef -> TypedFun
-getFuncTypedFun (FunDef x _ _) = x
+-- -- Generación de Entornos
 
-getFuncType :: TypedFun -> Type
-getFuncType (_, (Sig _ x)) = x
+updateEnv :: Env -> TypedVar -> Env 
+updateEnv xs x = (x:xs)
 
-getFuncTypeList :: TypedFun -> [Type]
-getFuncTypeList (_,(Sig xs _)) = xs
+getDefinedFunctionTypes :: Defs -> [TypedFun]
+getDefinedFunctionTypes d = [x | (FunDef x _ _) <- d]
 
-getFuncTypeName :: TypedFun -> Name
-getFuncTypeName (x, _) = x
+getFunctionEnv :: FunDef -> Env 
+getFunctionEnv (FunDef ((_,Sig ds _)) ns _) = zip ns ds
 
-getVarName :: TypedVar -> Name
-getVarName (x, _) = x
+getSignatureTypeList :: Sig -> [Type]
+getSignatureTypeList (Sig x _) = x
 
-getVarType :: TypedVar -> Type
-getVarType (_, x) = x
+-- -- Obtención de tipado
+getEnvVarType :: Env -> Name -> Type
+getEnvVarType ((n,t):xs) y | y == n = t
+                           | otherwise = getEnvVarType xs y
+                                                  
+getFuncType :: [TypedFun] -> Name -> Type
+getFuncType ((nf,(Sig _ t)):xs) n   | n == nf = t
+                                    | otherwise = getFuncType xs n
 
-getFuncTypeFromList :: [TypedFun] -> Name -> Type
-getFuncTypeFromList (x:xs) y | getFuncTypeName $ x == y = getFuncType x
-                             | otherwise = getFuncTypeFromList xs y
-
-getVarTypeFromList :: [TypedVar] -> Name -> Type
-getVarTypeFromList (x:xs) y | getVarName $ x == y = getVarType x
-                            | otherwise = getVarTypeFromList xs y
-
-                             
-updateVarType :: [TypedVar] -> TypedVar -> [TypedVar]
-updateVarType [] x = [x]
-updateVarType (y:ys) x | getVarName $ x == getVarName $ y = (x:ys)
-                       | otherwise = (y:(updateVarType ys x))
+getFuncSignature :: [TypedFun] -> Name -> Sig 
+getFuncSignature ((ns,x):xs) n  | ns == n = x
+                                | otherwise = getFuncSignature xs n
 
 
-                       
-getExprType :: [TypedFun] -> [TypedVar] -> Expr -> Type
+getExprType :: [TypedFun] -> Env -> Expr -> Type
 getExprType _ _ (IntLit _) = TyInt
 getExprType _ _ (BoolLit _) = TyBool
-getExprType _ _ (Infix x _ _) = case x of
-                                    Add, Sub, Mult, Div -> TyInt
-                                    Eq, NEq, GTh, LTh, GEq, LEq -> TyBool
-getExprType xs _ (App x _) = getFuncTypeFromList xs x
-getExprType _ xs (Var x) = getVarTypeFromList xs x
+getExprType fs _ (App fn _) = getFuncType fs fn
+getExprType _ vs (Var v) = getEnvVarType vs v
 getExprType fs vs (If _ x _) = getExprType fs vs x
-getExprType fs vs (Let ux _ expr) = getExprType fs (updateVarType vs ux) expr
+getExprType fs vs (Let ux _ expr) = getExprType fs (updateEnv vs ux) expr
+getExprType _ _ (Infix x _ _) = case x of
+                                    Add -> TyInt
+                                    Sub -> TyInt
+                                    Mult -> TyInt
+                                    Div -> TyInt
+                                    Eq -> TyBool 
+                                    NEq-> TyBool
+                                    GTh-> TyBool
+                                    LTh-> TyBool
+                                    GEq-> TyBool
+                                    LEq -> TyBool
 
 
-checkExprType :: [TypedFun] -> [TypedVar] -> Expr -> [Error]
+-- -- Control de tipado
+
+checkExprType :: [TypedFun] -> Env -> Expr -> [Error]
 checkExprType _ _ (IntLit _) = []
 checkExprType _ _ (BoolLit _) = []
 checkExprType _ _ (Var _) = []
+checkExprType fs vs (Infix op l r) = (checkExprType fs vs l) ++ (checkExprType fs vs r) ++
+                                     (case (getExprType fs vs (Infix op l r)) of
+                                        TyInt   -> auxCheckTypeOpInt fs vs l r
+                                        TyBool  -> auxCheckTypeEquals fs vs l r
+                                     )
+checkExprType fs vs (If cond thn els) = (if (getExprType fs vs cond) == TyBool then [] else [Expected TyBool TyInt]) ++ (auxCheckTypeEquals fs vs thn els)
+checkExprType fs vs (Let (n,t) l r) =   (if t == (getExprType fs vs l) then [] else [Expected t (getExprType fs vs l)]) ++
+                                        (checkExprType fs (updateEnv vs (n,t)) r)
+checkExprType fs vs (App n exs) = (auxCheckParmNum fs n exs) ++ (auxCheckParmType fs vs n exs) ++ (concat $ map (checkExprType fs vs) exs)
+
+auxCheckTypeOpInt :: [TypedFun] -> Env -> Expr -> Expr -> [Error]
+auxCheckTypeOpInt fs vs l r =   (if (getExprType fs vs l) == TyBool then [Expected TyInt TyBool] else []) ++
+                                (if (getExprType fs vs r) == TyBool then [Expected TyInt TyBool] else [])
+
+auxCheckTypeEquals :: [TypedFun] -> Env -> Expr -> Expr -> [Error]
+auxCheckTypeEquals fs vs l r    | x == y = []
+                                | otherwise = [Expected x y]
+                                where
+                                    x = getExprType fs vs l
+                                    y = getExprType fs vs r
+
+auxCheckParmTypeEquals :: [TypedFun] -> Env -> Type -> Expr -> [Error]
+auxCheckParmTypeEquals fs vs t expr | t == y = []
+                                    | otherwise = [Expected t y]
+                                    where 
+                                        y = getExprType fs vs expr
+
+auxCheckParmNum fs n exs    | x == y = []
+                            | otherwise = [ArgNumApp n y x] 
+                            where
+                                x = contarParamSig $ getFuncSignature fs n 
+                                y = length exs
+                                
+auxCheckParmType fs vs n exs =  concat $ zipWith (auxCheckParmTypeEquals fs vs) x exs
+                                where
+                                    x = getSignatureTypeList $ getFuncSignature fs n
+
+
 
 
 
