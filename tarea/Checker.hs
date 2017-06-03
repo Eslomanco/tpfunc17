@@ -36,7 +36,7 @@ instance Show Error where
 
 
 checkProgram :: Program -> Checked
-checkProgram (Program defs body) = checkProgramUndefined (Program defs body) -- Impementar
+checkProgram (Program defs body) = integrateTypeCheck $ integrateUndefined $ integrateDefParmNum $ integrateDuplicate (Program defs body) -- Impementar
 
 -- Checkeo de Duplicados
 pertenece :: Eq a => a -> [a] -> Bool
@@ -168,12 +168,14 @@ checkExprType :: [TypedFun] -> Env -> Expr -> [Error]
 checkExprType _ _ (IntLit _) = []
 checkExprType _ _ (BoolLit _) = []
 checkExprType _ _ (Var _) = []
-checkExprType fs vs (Infix op l r) = (checkExprType fs vs l) ++ (checkExprType fs vs r) ++
-                                     (case (getExprType fs vs (Infix op l r)) of
+checkExprType fs vs (Infix op l r) = (case (getExprType fs vs (Infix op l r)) of
                                         TyInt   -> auxCheckTypeOpInt fs vs l r
                                         TyBool  -> auxCheckTypeEquals fs vs l r
-                                     )
-checkExprType fs vs (If cond thn els) = (if (getExprType fs vs cond) == TyBool then [] else [Expected TyBool TyInt]) ++ (auxCheckTypeEquals fs vs thn els)
+                                     ) ++ (checkExprType fs vs l) ++ (checkExprType fs vs r)
+                                     
+checkExprType fs vs (If cond thn els) = (checkExprType fs vs cond) ++ (if (getExprType fs vs cond) == TyBool then [] else [Expected TyBool TyInt]) ++   
+                                        (checkExprType fs vs thn) ++ (checkExprType fs vs els) ++ (auxCheckTypeEquals fs vs thn els) 
+                                        
 checkExprType fs vs (Let (n,t) l r) =   (if t == (getExprType fs vs l) then [] else [Expected t (getExprType fs vs l)]) ++
                                         (checkExprType fs (updateEnv vs (n,t)) r)
 checkExprType fs vs (App n exs) = (auxCheckParmNum fs n exs) ++ (auxCheckParmType fs vs n exs) ++ (concat $ map (checkExprType fs vs) exs)
@@ -196,7 +198,7 @@ auxCheckParmTypeEquals fs vs t expr | t == y = []
                                         y = getExprType fs vs expr
 
 auxCheckParmNum fs n exs    | x == y = []
-                            | otherwise = [ArgNumApp n y x] 
+                            | otherwise = [ArgNumApp n x y] 
                             where
                                 x = contarParamSig $ getFuncSignature fs n 
                                 y = length exs
@@ -205,13 +207,32 @@ auxCheckParmType fs vs n exs =  concat $ zipWith (auxCheckParmTypeEquals fs vs) 
                                 where
                                     x = getSignatureTypeList $ getFuncSignature fs n
 
+checkFuncExpr :: [TypedFun] -> FunDef -> [Error]
+checkFuncExpr fs (FunDef (fn,(Sig ts _)) ns expr) = checkExprType fs (zip ns ts) expr
 
+checkProgramType :: Program -> Checked
+checkProgramType (Program defs expr) | (null $ x) && (null $ y) = Ok
+                                     | otherwise = Wrong (x ++ y)
+                                     where 
+                                        x = concat $ map (checkFuncExpr z) defs
+                                        y = checkExprType z [] expr
+                                        z = getDefinedFunctionTypes defs
+-- Funciones de integración
 
+integrateDuplicate :: Program -> (Program, Checked)
+integrateDuplicate (Program defs expr) = ((Program defs expr), checkDupDecl defs)
 
+integrateDefParmNum :: (Program, Checked) -> (Program, Checked)
+integrateDefParmNum ((Program defs expr), Ok) = ((Program defs expr), checkParamNums defs)
+integrateDefParmNum (p, Wrong x) = (p, Wrong x) 
 
+integrateUndefined :: (Program, Checked) -> (Program, Checked)
+integrateUndefined (p, Ok) = (p, checkProgramUndefined p)
+integrateUndefined (p, Wrong x) = (p, Wrong x)
 
-
-
+integrateTypeCheck :: (Program, Checked) -> Checked
+integrateTypeCheck (_, Wrong x) = Wrong x
+integrateTypeCheck (p, Ok) = checkProgramType p
 
 
 
