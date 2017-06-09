@@ -13,10 +13,10 @@ import Syntax
 -- en caso de ser necesario
 
 instance Show Op where
-    show Add = "+"
-    show Sub = "-"
-    show Mult = "*"
-    show Div = "div"
+    show Add = " + "
+    show Sub = " - "
+    show Mult = " * "
+    show Div = " div "
     show Eq = "=="
     show NEq = "/="
     show GTh = ">"
@@ -35,12 +35,12 @@ genProgram (Program dfs expr)  = "#include <stdio.h>\n" ++ (generateDefs dfs) ++
 
 generateDefs :: Defs -> String
 generateDefs [] = []
-generateDefs (x:[]) = (generateDefinition x) ++ "\n"
+generateDefs (x:[]) = (generateDefinition x)
 generateDefs (x:xs) = (generateDefinition x) ++ (generateDefs xs)
 
 
 generateDefinition :: FunDef -> String
-generateDefinition (FunDef (n,s) nx expr) = "int _" ++ n ++ "(" ++ name2param nx ++ "){\n" ++ (fst $ getLetDefinition expr ([],0)) ++ "return (" ++ (fst $ genExpr expr 0) ++ "); };"
+generateDefinition (FunDef (n,s) nx expr) = "int _" ++ n ++ "(" ++ name2param nx ++ "){\n" ++ (fst $ getLetDefinition expr ([],0)) ++ "return (" ++ (fst $ genExpr expr 0) ++ "); };\n"
 
 name2param :: [Name] -> String
 name2param [] = []
@@ -56,7 +56,7 @@ genExpr :: Expr -> Int -> (String, Int)
 genExpr (Var x) y = ('_':x, y)
 genExpr (IntLit x) y =  (show x, y) 
 genExpr (BoolLit x) y = (if x then ['1'] else ['0'], y) 
-genExpr (Infix op x y) z = ("(" ++ (strX) ++ " " ++ show op ++ " " ++ (strY) ++ ")", numY)
+genExpr (Infix op x y) z = ("(" ++ (strX) ++ show op ++ (strY) ++ ")", numY)
                             where
                                 strX = fst $ genExpr x z
                                 numX = snd $ genExpr x z

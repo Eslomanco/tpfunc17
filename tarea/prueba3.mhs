@@ -1,0 +1,4 @@
+foo :: (Int) -> Int
+foo(x) = x * x
+
+main = foo(1, 1 + True)
