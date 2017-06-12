@@ -1,0 +1,4 @@
+foo :: (Int) -> Int
+foo(x) = let y :: Int = x > 2 in ((y * x) == 4)
+
+main = foo(True)

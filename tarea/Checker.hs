@@ -178,7 +178,9 @@ checkExprType fs vs (If cond thn els) = (checkExprType fs vs cond) ++ (if (getEx
                                         
 checkExprType fs vs (Let (n,t) l r) =   (if t == (getExprType fs vs l) then [] else [Expected t (getExprType fs vs l)]) ++
                                         (checkExprType fs (updateEnv vs (n,t)) r)
-checkExprType fs vs (App n exs) = (auxCheckParmNum fs n exs) ++ (auxCheckParmType fs vs n exs) ++ (concat $ map (checkExprType fs vs) exs)
+checkExprType fs vs (App n exs) = (auxCheckParmNum fs n exs) ++ (auxCheckParmType fs vs n exs) ++ (concat $ map (checkExprType fs vs) (take (length x) exs))
+                                    where 
+                                        x = getSignatureTypeList $ getFuncSignature fs n
 
 auxCheckTypeOpInt :: [TypedFun] -> Env -> Expr -> Expr -> [Error]
 auxCheckTypeOpInt fs vs l r =   (if (getExprType fs vs l) == TyBool then [Expected TyInt TyBool] else []) ++
@@ -208,7 +210,10 @@ auxCheckParmType fs vs n exs =  concat $ zipWith (auxCheckParmTypeEquals fs vs) 
                                     x = getSignatureTypeList $ getFuncSignature fs n
 
 checkFuncExpr :: [TypedFun] -> FunDef -> [Error]
-checkFuncExpr fs (FunDef (fn,(Sig ts _)) ns expr) = checkExprType fs (zip ns ts) expr
+checkFuncExpr fs (FunDef (fn,(Sig ts tf)) ns expr) = (if (tf == expType) then [] else [Expected tf expType]) ++ (checkExprType fs env expr)
+                                                    where
+                                                        env = zip ns ts
+                                                        expType = getExprType fs env expr
 
 checkProgramType :: Program -> Checked
 checkProgramType (Program defs expr) | (null $ x) && (null $ y) = Ok
