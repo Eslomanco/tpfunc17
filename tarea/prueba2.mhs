@@ -1,1 +1,0 @@
-main = let x :: Int = (let y :: Int = 1 in y) in  (let z :: Int = x in (x + z))

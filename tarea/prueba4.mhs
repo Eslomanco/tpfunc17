@@ -1,7 +1,0 @@
-foo :: (Int) -> Int
-foo(x) = let x :: Int = x + 2 in x * 2
-
-roo :: (Int) -> Int
-roo(x) = let x :: Int = x in x * x
-
-main = let x :: Int = 4 in foo(x) + roo(x)

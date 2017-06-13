@@ -1,2 +1,0 @@
-The number of arguments in the application of: foo doesn't match the signature (2 vs 1)
-Expected: integer Actual: boolean
