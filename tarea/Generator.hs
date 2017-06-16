@@ -18,7 +18,7 @@ instance Show Op where
     show Mult = " * "
     show Div = " / "
     show Eq = "=="
-    show NEq = "/="
+    show NEq = "!="
     show GTh = ">"
     show LTh = "<"
     show GEq = ">="
